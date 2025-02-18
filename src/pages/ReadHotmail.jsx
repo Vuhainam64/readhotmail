@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Input, Button, message, Skeleton } from "antd";
+import { Button, message, Skeleton } from "antd";
 
-import { FaPlus } from "react-icons/fa";
+import { FaMinus, FaPlus } from "react-icons/fa";
 import { FiRefreshCcw } from "react-icons/fi";
 import { MdOutlineMailOutline } from "react-icons/md";
 
+import { Cloud } from "../assets/img";
 import { readEmails } from "../api/hotmail";
+import { AddMail, EditMail, ReadContent } from "./components/ReadHotmail";
 
 const ReadHotmail = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [inboxData, setInboxData] = useState("");
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState("");
   const [email, setEmail] = useState([]);
@@ -17,28 +18,19 @@ const ReadHotmail = () => {
   const [emailContent, setEmailContent] = useState("");
   const [selectedEmailPopup, setSelectedEmailPopup] = useState("");
   const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     const stored = localStorage.getItem("hotmailInboxes");
     if (stored) {
-      setEmails(stored.split("\n").filter((line) => line.trim() !== ""));
+      const emailList = stored.split("\n").filter((line) => line.trim() !== "");
+      setEmails(emailList);
+      if (emailList.length > 0) {
+        handleEmailClick(emailList[0].split("|")[0]);
+      }
     }
-  }, []);
-
-  const showModal = () => setIsModalVisible(true);
-  const handleCancel = () => setIsModalVisible(false);
-
-  const handleSave = () => {
-    const lines = inboxData.split("\n").filter((line) => line.trim() !== "");
-    const stored = localStorage.getItem("hotmailInboxes");
-    const existing = stored
-      ? stored.split("\n").filter((line) => line.trim() !== "")
-      : [];
-    const updated = [...lines, ...existing];
-    localStorage.setItem("hotmailInboxes", updated.join("\n"));
-    setEmails(updated);
-    setIsModalVisible(false);
-  };
+  }, [refresh]);
 
   const handleDelete = (index) => {
     const newEmails = emails.filter((_, i) => i !== index);
@@ -72,7 +64,6 @@ const ReadHotmail = () => {
       const emailData = await readEmails(mail, clientId, token, 10);
       if (emailData && emailData.length > 0) {
         setEmail(emailData);
-        message.success(`Found ${emailData.length} email(s)`);
       } else {
         message.warning("No emails found for this account.");
       }
@@ -91,10 +82,8 @@ const ReadHotmail = () => {
   };
 
   const handleCopyEmail = () => {
-    if (selectedEmail) {
-      navigator.clipboard.writeText(selectedEmail);
-      message.success(`Email "${selectedEmail}" is copied!`);
-    }
+    message.success(`Email "${selectedEmail}" is copied!`);
+    navigator.clipboard.writeText(selectedEmail);
   };
 
   const handleRefresh = () => {
@@ -114,13 +103,13 @@ const ReadHotmail = () => {
         <div>
           <div
             className="flex items-center justify-between hover:bg-gray-900 p-2 cursor-pointer"
-            onClick={showModal}
+            onClick={() => setIsModalVisible(true)}
           >
             <div>Add Inbox</div>
             <FaPlus />
           </div>
           <div
-            className="mt-4 space-y-2 max-h-[500px] overflow-y-auto scrollbar-thin 
+            className="mt-4 space-y-2 max-h-[500px] overflow-y-hidden hover:overflow-y-auto scrollbar-thin 
             scrollbar-thumb-gray-700 scrollbar-track-gray-500"
           >
             {emails.map((line, index) => (
@@ -130,18 +119,18 @@ const ReadHotmail = () => {
                 hover:bg-gray-600 cursor-pointer"
                 onClick={() => handleEmailClick(line.split("|")[0])}
               >
-                <span>{line.split("|")[0]}</span>
+                <span>{line.split("|")[0].split("@")[0]}</span>
                 <button
                   onClick={() => handleDelete(index)}
                   className="text-red-500 font-bold"
                 >
-                  -
+                  <FaMinus />
                 </button>
               </div>
             ))}
           </div>
           {emails.length > 0 && (
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-4">
               <Button
                 onClick={handleDeleteAll}
                 type="primary"
@@ -149,6 +138,13 @@ const ReadHotmail = () => {
                 className="w-full"
               >
                 Delete All Email
+              </Button>
+              <Button
+                onClick={() => setEditModalVisible(true)}
+                type="primary"
+                className="w-full"
+              >
+                Edit Mail
               </Button>
             </div>
           )}
@@ -179,56 +175,70 @@ const ReadHotmail = () => {
           </div>
           {loading ? (
             <Skeleton active />
-          ) : (
-            email.length > 0 && (
-              <div className="space-y-2 mt-4">
-                {email.map((header, index) => (
-                  <div
-                    key={index}
-                    className="cursor-pointer bg-white p-4 rounded-md hover:bg-slate-200"
-                    onClick={() => handleHeaderClick(header)}
-                  >
-                    <div className="grid grid-cols-2 gap-1">
-                      <div>
-                        <div className="font-semibold">{header.subject}</div>
-                        <div className="text-sm">{header.from}</div>
-                      </div>
-                      <div className="justify-end w-full flex">
-                        <div className="text-gray-600">{header.date}</div>
-                      </div>
+          ) : email.length > 0 ? (
+            <div className="space-y-2 mt-4">
+              {email.map((header, index) => (
+                <div
+                  key={index}
+                  className="cursor-pointer bg-white p-4 rounded-md hover:bg-slate-200"
+                  onClick={() => handleHeaderClick(header)}
+                >
+                  <div className="grid grid-cols-2 gap-1">
+                    <div>
+                      <div className="font-semibold">{header.subject}</div>
+                      <div className="text-sm">{header.from}</div>
+                    </div>
+                    <div className="justify-end w-full flex">
+                      <div className="text-gray-600">{header.date}</div>
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className="flex flex-wrap justify-center w-full h-screen items-center"
+              style={{ maxHeight: "calc(100vh - 218px)" }}
+            >
+              <div className="flex flex-col items-center space-y-4">
+                <img src={Cloud} alt="No Emails" className="w-80" />
+                <div className="w-full mt-4 text-center text-xl text-gray-900 font-semibold">
+                  No emails found
+                </div>
+                <Button
+                  onClick={() => setIsModalVisible(true)}
+                  className="flex items-center gap-2 px-6 py-3 text-lg"
+                >
+                  <FaPlus size={10} />
+                  Add Email
+                </Button>
               </div>
-            )
+            </div>
           )}
         </div>
       </div>
 
-      <Modal
-        title="Add Inbox"
-        open={isModalVisible}
-        onCancel={handleCancel}
-        onOk={handleSave}
-      >
-        <Input.TextArea
-          rows={6}
-          placeholder="mail|pass|client_id|token"
-          value={inboxData}
-          onChange={(e) => setInboxData(e.target.value)}
-        />
-      </Modal>
+      <AddMail
+        isModalVisible={isModalVisible}
+        setIsModalVisible={setIsModalVisible}
+        setEmails={setEmails}
+      />
 
       {/* New Modal to display email content */}
-      <Modal
-        title={selectedEmailPopup}
-        open={emailModalVisible}
-        onCancel={() => setEmailModalVisible(false)}
-        footer={null}
-        width={800}
-      >
-        <div dangerouslySetInnerHTML={{ __html: emailContent }} />
-      </Modal>
+      <ReadContent
+        selectedEmailPopup={selectedEmailPopup}
+        emailModalVisible={emailModalVisible}
+        setEmailModalVisible={setEmailModalVisible}
+        emailContent={emailContent}
+      />
+
+      <EditMail
+        editModalVisible={editModalVisible}
+        setEditModalVisible={setEditModalVisible}
+        refresh={refresh}
+        setRefresh={setRefresh}
+        setIsModalVisible={setIsModalVisible}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { BrowserRouter as Router } from "react-router-dom";
 
+import '@ant-design/v5-patch-for-react-19';
 import "react-toastify/dist/ReactToastify.css";
 import "./index.css";
 import App from "./App";
