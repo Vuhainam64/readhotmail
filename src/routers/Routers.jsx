@@ -1,16 +1,28 @@
-import React from "react";
-import { useRoutes } from "react-router-dom";
+import React from 'react'
+import { useRoutes } from 'react-router-dom'
 
-import ReadHotmail from "../pages/ReadHotmail";
+import { CheckLiveTextnow, MergeHotmail, ReadHotmail, ReadPhoneShopee } from '../pages'
 
 const Routers = () => {
   const routing = useRoutes([
     {
-      path: "/readHotmail",
+      path: '/readHotmail',
       element: <ReadHotmail />,
     },
-  ]);
-  return routing;
-};
+    {
+      path: '/mergeHotmail',
+      element: <MergeHotmail />,
+    },
+    {
+      path: '/readPhoneShopee',
+      element: <ReadPhoneShopee />,
+    },
+    {
+      path: '/checkLiveTextnow',
+      element: <CheckLiveTextnow />,
+    },
+  ])
+  return routing
+}
 
-export default Routers;
+export default Routers
