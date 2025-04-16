@@ -1,8 +1,6 @@
 import React, { useState } from 'react'
 import { Input, Button, Card, message, Select } from 'antd'
 import { CopyOutlined } from '@ant-design/icons'
-import 'antd/dist/reset.css'
-import 'tailwindcss/tailwind.css'
 
 const { TextArea } = Input
 const { Option } = Select
@@ -28,10 +26,19 @@ const MergeHotmail = () => {
       let email,
         pass,
         clientId,
-        prefix = []
+        prefix = [],
+        suffix = []
 
-      if (parts.length === 8) {
-        // New format: MailTN|PassTN|Phone|Date|MailHM|PassMailHM|RefreshTokenCũ|ClientIDCũ
+      if (parts.length === 9) {
+        // New format: MailTN|PassTN|Phone|Date|MailHM|PassMailHM|RefreshTokenCũ|ClientIDCũ|Named
+        const [mailTN, passTN, phone, date, mailHM, passMailHM, , clientIDCũ, named] = parts
+        email = mailHM
+        pass = passMailHM
+        clientId = clientIDCũ
+        prefix = [mailTN, passTN, phone, date]
+        suffix = [named]
+      } else if (parts.length === 8) {
+        // Existing format: MailTN|PassTN|Phone|Date|MailHM|PassMailHM|RefreshTokenCũ|ClientIDCũ
         const [mailTN, passTN, phone, date, mailHM, passMailHM, , clientIDCũ] = parts
         email = mailHM
         pass = passMailHM
@@ -43,7 +50,6 @@ const MergeHotmail = () => {
         email = mailHM
         pass = passMailHM
         clientId = clientIDCũ
-        prefix = []
       } else {
         // Invalid format, return as is
         return leftLine
@@ -52,29 +58,46 @@ const MergeHotmail = () => {
       // Find matching email in rightData
       const rightMatch = rightData.find((item) => item.email === email)
       if (rightMatch) {
-        return [...prefix, email, pass, rightMatch.refreshToken, rightMatch.clientId].join('|')
+        return [
+          ...prefix,
+          email,
+          pass,
+          rightMatch.refreshToken,
+          rightMatch.clientId,
+          ...suffix,
+        ].join('|')
       }
-      return [...prefix, email, pass, 'Null', 'Null'].join('|')
+      return [...prefix, email, pass, 'Null', 'Null', ...suffix].join('|')
     })
 
     // Apply sorting based on sortOption
     let sortedResult = [...result]
     if (sortOption === 'a-z') {
       sortedResult.sort((a, b) => {
-        const emailA = a.split('|').length === 8 ? a.split('|')[4] : a.split('|')[0]
-        const emailB = b.split('|').length === 8 ? b.split('|')[4] : b.split('|')[0]
+        const emailA = a.split('|').length >= 8 ? a.split('|')[4] : a.split('|')[0]
+        const emailB = b.split('|').length >= 8 ? b.split('|')[4] : b.split('|')[0]
         return emailA.localeCompare(emailB)
       })
     } else if (sortOption === 'z-a') {
       sortedResult.sort((a, b) => {
-        const emailA = a.split('|').length === 8 ? a.split('|')[4] : a.split('|')[0]
-        const emailB = b.split('|').length === 8 ? b.split('|')[4] : b.split('|')[0]
-        return emailB.localeCompare(emailA)
+        const emailA = a.split('|').length >= 8 ? a.split('|')[4] : a.split('|')[0]
+        const emailB = b.split('|').length >= 8 ? b.split('|')[4] : b.split('|')[0]
+        return emailB.localeCompare(emailB)
       })
     } else if (sortOption === 'null-last') {
       sortedResult.sort((a, b) => {
-        const aIsNull = a.split('|').slice(-2).join('|') === 'Null|Null'
-        const bIsNull = b.split('|').slice(-2).join('|') === 'Null|Null'
+        const aIsNull =
+          a
+            .split('|')
+            .slice(-2 - (a.split('|').length === 9 ? 1 : 0))
+            .slice(0, 2)
+            .join('|') === 'Null|Null'
+        const bIsNull =
+          b
+            .split('|')
+            .slice(-2 - (b.split('|').length === 9 ? 1 : 0))
+            .slice(0, 2)
+            .join('|') === 'Null|Null'
         if (aIsNull && !bIsNull) return 1
         if (!aIsNull && bIsNull) return -1
         return 0
@@ -91,20 +114,30 @@ const MergeHotmail = () => {
       let sortedResult = output.trim().split('\n')
       if (value === 'a-z') {
         sortedResult.sort((a, b) => {
-          const emailA = a.split('|').length === 8 ? a.split('|')[4] : a.split('|')[0]
-          const emailB = b.split('|').length === 8 ? b.split('|')[4] : b.split('|')[0]
+          const emailA = a.split('|').length >= 8 ? a.split('|')[4] : a.split('|')[0]
+          const emailB = b.split('|').length >= 8 ? b.split('|')[4] : b.split('|')[0]
           return emailA.localeCompare(emailB)
         })
       } else if (value === 'z-a') {
         sortedResult.sort((a, b) => {
-          const emailA = a.split('|').length === 8 ? a.split('|')[4] : a.split('|')[0]
-          const emailB = b.split('|').length === 8 ? b.split('|')[4] : b.split('|')[0]
+          const emailA = a.split('|').length >= 8 ? a.split('|')[4] : a.split('|')[0]
+          const emailB = b.split('|').length >= 8 ? b.split('|')[4] : b.split('|')[0]
           return emailB.localeCompare(emailA)
         })
       } else if (value === 'null-last') {
         sortedResult.sort((a, b) => {
-          const aIsNull = a.split('|').slice(-2).join('|') === 'Null|Null'
-          const bIsNull = b.split('|').slice(-2).join('|') === 'Null|Null'
+          const aIsNull =
+            a
+              .split('|')
+              .slice(-2 - (a.split('|').length === 9 ? 1 : 0))
+              .slice(0, 2)
+              .join('|') === 'Null|Null'
+          const bIsNull =
+            b
+              .split('|')
+              .slice(-2 - (b.split('|').length === 9 ? 1 : 0))
+              .slice(0, 2)
+              .join('|') === 'Null|Null'
           if (aIsNull && !bIsNull) return 1
           if (!aIsNull && bIsNull) return -1
           return 0
@@ -136,7 +169,7 @@ const MergeHotmail = () => {
               rows={10}
               value={leftInput}
               onChange={(e) => setLeftInput(e.target.value)}
-              placeholder='Enter left input (e.g., MailTN|PassTN|Phone|Date|MailHM|PassMailHM|RefreshTokenCũ|ClientIDCũ or MailHM|PassMailHM|RefreshTokenCũ|ClientIDCũ)'
+              placeholder='Enter left input (e.g., MailTN|PassTN|Phone|Date|MailHM|PassMailHM|RefreshTokenCũ|ClientIDCũ[|Named] or MailHM|PassMailHM|RefreshTokenCũ|ClientIDCũ)'
               className='w-full'
             />
           </div>
